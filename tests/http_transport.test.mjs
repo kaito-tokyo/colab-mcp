@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { Bridge } from "../src/bridge.mjs";
 
 test("HTTP MCP endpoint requires bearer authentication", async (t) => {
-  const bridge = new Bridge({ host: "127.0.0.1", port: 0, token: "http-test-token", origins: new Set(), allowNoOrigin: true }, () => {});
+  const bridge = new Bridge({ host: "127.0.0.1", port: 0, bearerToken: "http-test-token", mcpProxyToken: "http-test-token", origins: new Set(), allowNoOrigin: true }, () => {});
   await bridge.start();
   const port = await bridge.listenHttp("127.0.0.1", 0, "http-test-token");
   t.after(() => bridge.close());

@@ -10,7 +10,8 @@ test("MCP tools/list returns the embedded Colab tool definitions", () => {
   const bridge = new Bridge({
     host: "127.0.0.1",
     port: 0,
-    token: "test",
+    bearerToken: "test",
+    mcpProxyToken: "test",
     origins: new Set(),
     allowNoOrigin: true,
   }, () => {});

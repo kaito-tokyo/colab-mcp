@@ -17,13 +17,13 @@ Install the dependencies from the repository root:
 npm install
 ```
 
-Create a token and store its raw value as the `COLAB_MCP_TOKEN` user environment variable:
+Create a bearer token and store its raw value as the `COLAB_MCP_BEARER_TOKEN` user environment variable:
 
 ```powershell
 $bytes = New-Object byte[] 32
 [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
-$env:COLAB_MCP_TOKEN = [Convert]::ToBase64String($bytes).TrimEnd('=').Replace('+','-').Replace('/','_')
-[Environment]::SetEnvironmentVariable('COLAB_MCP_TOKEN', $env:COLAB_MCP_TOKEN, 'User')
+$env:COLAB_MCP_BEARER_TOKEN = [Convert]::ToBase64String($bytes).TrimEnd('=').Replace('+','-').Replace('/','_')
+[Environment]::SetEnvironmentVariable('COLAB_MCP_BEARER_TOKEN', $env:COLAB_MCP_BEARER_TOKEN, 'User')
 ```
 
 Start the bridge:
@@ -39,7 +39,29 @@ http://127.0.0.1:62161/mcp
 ```
 
 The HTTP port can be changed with `COLAB_BRIDGE_HTTP_PORT` or the command-line
-option `--http-port`. The token can also be supplied with `--token`.
+option `--http-port`. The bearer token is intentionally not accepted as a
+command-line argument; it must come from `COLAB_MCP_BEARER_TOKEN`.
+
+## Token roles
+
+The bridge uses two separate tokens:
+
+- `COLAB_MCP_BEARER_TOKEN` authenticates Codex requests to the local MCP HTTP
+  endpoint. It is mandatory and is read from the process environment at
+  startup.
+- `mcpProxyToken` authenticates the browser's WebSocket connection from Colab
+  to the bridge. It is generated randomly for each bridge process and is never
+  used as the Codex Bearer token.
+
+When `open_colab_browser_connection` is called, the bridge returns a Colab URL
+whose fragment is assembled as `tokenForColabConnection`:
+
+```text
+#mcpProxyToken=<generated-token>&mcpProxyPort=<websocket-port>
+```
+
+If `COLAB_MCP_BEARER_TOKEN` is missing, startup fails with an error that shows
+the PowerShell command needed to create and persist the environment variable.
 
 ## Codex configuration
 
@@ -48,7 +70,7 @@ Register the endpoint with the same user environment variable:
 ```powershell
 codex mcp add colab-mcp-bridge `
   --url http://127.0.0.1:62161/mcp `
-  --bearer-token-env-var COLAB_MCP_TOKEN
+  --bearer-token-env-var COLAB_MCP_BEARER_TOKEN
 ```
 
 After connecting, call `open_colab_browser_connection` and open the returned
@@ -66,7 +88,7 @@ The bridge listens only on loopback by default. Do not commit the bridge token.
 ## Start automatically with Windows Task Scheduler
 
 To start the bridge when you log on to Windows, create the following task in
-Task Scheduler. The server reads the raw token from the `COLAB_MCP_TOKEN` user
+Task Scheduler. The server reads the raw token from the `COLAB_MCP_BEARER_TOKEN` user
 environment variable at startup, so do not put the token in the task arguments.
 Configure the task to run only when the user is logged on.
 
@@ -80,7 +102,7 @@ Configure the task to run only when the user is logged on.
    - **Add arguments:** `"C:\\Users\\<username>\\Documents\\GitHub\\kaito-tokyo\\colab-mcp\\bin\\colab-mcp-server.mjs" --http-port 62161`
    - **Start in (optional):** `C:\\Users\\<username>\\Documents\\GitHub\\kaito-tokyo\\colab-mcp`
 
-   The Node.js process reads `COLAB_MCP_TOKEN` from `process.env` at startup.
+   The Node.js process reads `COLAB_MCP_BEARER_TOKEN` from `process.env` at startup.
    Keep this user environment variable accessible only to trusted users.
 
 5. On the **Conditions** tab, clear the battery-power restriction if needed on
