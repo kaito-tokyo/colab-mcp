@@ -51,7 +51,7 @@ export class Bridge {
   }
 
   /** @param {string} host @param {number} port @param {string} token @param {Set<string>} origins @returns {Promise<number>} */
-  listenHttp(host, port, token, origins = new Set()) {
+  listenHttp(host, port, bearerToken, origins = new Set()) {
     this.httpServer = http.createServer(async (request, response) => {
       if (request.url !== "/mcp") {
         response.writeHead(404).end();
@@ -66,7 +66,7 @@ export class Bridge {
       const suppliedToken = authorization.startsWith("Bearer ")
         ? authorization.slice("Bearer ".length).trim()
         : null;
-      if (!tokenMatches(token, suppliedToken)) {
+      if (!tokenMatches(bearerToken, suppliedToken)) {
         response.writeHead(401).end("Unauthorized");
         return;
       }
@@ -280,7 +280,8 @@ export class Bridge {
     }
     if (message.params?.name === OPEN_COLAB_TOOL) {
       const connected = this.server.connected;
-      const url = `${COLAB_CONNECTION_URL}#mcpProxyToken=${encodeURIComponent(this.server.config.token)}&mcpProxyPort=${this.server.port}`;
+      const tokenForColabConnection = `mcpProxyToken=${encodeURIComponent(this.server.config.mcpProxyToken ?? this.server.config.token)}&mcpProxyPort=${this.server.port}`;
+      const url = `${COLAB_CONNECTION_URL}#${tokenForColabConnection}`;
       send({
         jsonrpc: "2.0",
         id: message.id,

@@ -15,7 +15,8 @@ test("bridge returns a JSON-RPC parse error for malformed notebook messages", ()
   const bridge = new Bridge({
     host: "127.0.0.1",
     port: 0,
-    token: "test-token",
+    bearerToken: "test-token",
+    mcpProxyToken: "test-token",
     origins: new Set(),
     allowNoOrigin: true,
   }, () => {});

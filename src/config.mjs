@@ -11,11 +11,21 @@ function randomToken() {
 }
 
 export function loadConfig(env = process.env, overrides = {}) {
+  const bearerToken = overrides.bearerToken ?? env.COLAB_MCP_BEARER_TOKEN;
+  if (!bearerToken) {
+    throw new Error(
+      "COLAB_MCP_BEARER_TOKEN is not set. Configure it first with PowerShell:\n" +
+        "$bytes = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes); " +
+        "$env:COLAB_MCP_BEARER_TOKEN = [Convert]::ToBase64String($bytes).TrimEnd('=').Replace('+','-').Replace('/','_'); " +
+        "[Environment]::SetEnvironmentVariable('COLAB_MCP_BEARER_TOKEN', $env:COLAB_MCP_BEARER_TOKEN, 'User')",
+    );
+  }
   return {
     host: overrides.host ?? env.COLAB_BRIDGE_LISTEN ?? "127.0.0.1",
     port: Number(overrides.port ?? env.COLAB_BRIDGE_PORT ?? 0),
     httpPort: Number(overrides.httpPort ?? env.COLAB_BRIDGE_HTTP_PORT ?? 62161),
-    token: overrides.token ?? env.COLAB_MCP_TOKEN ?? randomToken(),
+    bearerToken,
+    mcpProxyToken: overrides.mcpProxyToken ?? randomToken(),
     origins: new Set([
       "https://colab.google.com",
       "https://colab.research.google.com",

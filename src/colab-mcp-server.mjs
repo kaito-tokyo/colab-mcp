@@ -8,7 +8,7 @@ import { Bridge } from "./bridge.mjs";
 export async function runServer(overrides = {}) {
   const bridge = new Bridge(loadConfig(process.env, overrides));
   await bridge.start();
-  const httpPort = await bridge.listenHttp(bridge.server.config.host, bridge.server.config.httpPort, bridge.server.config.token, bridge.server.config.origins);
+  const httpPort = await bridge.listenHttp(bridge.server.config.host, bridge.server.config.httpPort, bridge.server.config.bearerToken, bridge.server.config.origins);
   console.error(`MCP HTTP endpoint: http://${bridge.server.config.host}:${httpPort}/mcp`);
 
   const shutdown = async () => {

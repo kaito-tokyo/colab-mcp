@@ -82,7 +82,7 @@ export class WebSocketServer extends EventTarget {
         : null);
     if (url.pathname !== "/" && url.pathname !== "/ws")
       return this._reject(socket, 404, "Not Found");
-    if (!originAllowed || !tokenMatches(this.config.token, suppliedToken))
+    if (!originAllowed || !tokenMatches(this.config.mcpProxyToken ?? this.config.token, suppliedToken))
       return this._reject(socket, 403, "Forbidden");
     if (!protocols.includes("mcp"))
       return this._reject(socket, 400, "Bad Request");
