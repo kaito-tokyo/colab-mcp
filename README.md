@@ -77,7 +77,7 @@ Configure the task to run only when the user is logged on.
 4. On the **Actions** tab, select **New** and enter:
 
    - **Program/script:** `C:\\Program Files\\nodejs\\node.exe`
-   - **Add arguments:** `C:\\Users\\<username>\\Documents\\GitHub\\kaito-tokyo\\colab-mcp\\bin\\colab-mcp-server.mjs --http-port 62161`
+   - **Add arguments:** `"C:\\Users\\<username>\\Documents\\GitHub\\kaito-tokyo\\colab-mcp\\bin\\colab-mcp-server.mjs" --http-port 62161`
    - **Start in (optional):** `C:\\Users\\<username>\\Documents\\GitHub\\kaito-tokyo\\colab-mcp`
 
    The Node.js process reads `COLAB_MCP_TOKEN` from `process.env` at startup.
