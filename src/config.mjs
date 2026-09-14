@@ -15,7 +15,7 @@ export function loadConfig(env = process.env, overrides = {}) {
     host: overrides.host ?? env.COLAB_BRIDGE_LISTEN ?? "127.0.0.1",
     port: Number(overrides.port ?? env.COLAB_BRIDGE_PORT ?? 0),
     httpPort: Number(overrides.httpPort ?? env.COLAB_BRIDGE_HTTP_PORT ?? 62161),
-    token: overrides.token ?? env.COLAB_BRIDGE_TOKEN ?? randomToken(),
+    token: overrides.token ?? env.COLAB_MCP_TOKEN ?? randomToken(),
     origins: new Set([
       "https://colab.google.com",
       "https://colab.research.google.com",
