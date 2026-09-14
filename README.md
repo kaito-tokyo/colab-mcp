@@ -1,73 +1,64 @@
-# Colab-mcp
+# Colab MCP Bridge
 
-An MCP server for bridging your local agent to a Colab session in the browser.
+Local MCP bridge for editing and running cells in a Google Colab notebook.
+The MCP server uses Streamable HTTP on loopback and connects to the Colab
+browser through an authenticated WebSocket.
 
-# Supported Clients
-This MCP server requires client support for `notifications/tools/list_changed` and for the client to be running locally on your device. 
+## Installation
 
-Popular clients that fit these criteria include:
-- Gemini CLI
-- Claude Code
-- Windsurf
+Requirements:
 
+- Node.js 24 or newer
+- A local Codex client with Streamable HTTP MCP support
 
-# Setup
+Install the dependencies from the repository root:
 
-- Install `uv` (`pip install uv`)
-- Configure for usage (eg for mcp.json style services):
-
-```
-...
-  "mcpServers": {
-    "colab-mcp": {
-      "command": "uvx",
-      "args": ["git+https://github.com/googlecolab/colab-mcp"],
-      "timeout": 30000
-    }
-  }
-...
+```powershell
+npm install
 ```
 
-(If you have a non-standard default package index (**Googlers**), you may also need to add `--index https://pypi.org/simple`)
+Create a token and store it as a user environment variable:
 
-# Issues & Discussions
-
-We are using GitHub [discussions](https://github.com/googlecolab/colab-mcp/discussions) as the
-place for issue discussion and feature requests. As discussions mature into action items, we
-will add those items as issues. This helps us ensure that issues in the issue tracker are
-well-understood, deduplicated, and actionable. For these reasons, **please do <u>NOT</u> open
-issues directly.** 
-
-# Contributing 
-We unfortunately don't have the bandwidth to support review of external contributions, and we 
-don't want user PRs to languish, so we aren't accepting any external contributions right now.
-
-If you have a great idea or pain point, we would love to hear about it on our 
-[discussions](https://github.com/googlecolab/colab-mcp/discussions) page - the preferred place 
-for issue discussion and feature requests.
-
-# Internal - For Colab Developers
-
-### Prerequisites
-
-- `uv` is required (`pip install uv`)
-- Configure git hooks to run repo presubmits
-
-```shell
-git config core.hooksPath .githooks
+```powershell
+$bytes = New-Object byte[] 32
+[Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+$env:COLAB_BRIDGE_TOKEN = [Convert]::ToBase64String($bytes).TrimEnd('=').Replace('+','-').Replace('/','_')
+[Environment]::SetEnvironmentVariable('COLAB_BRIDGE_TOKEN', $env:COLAB_BRIDGE_TOKEN, 'User')
 ```
 
-### Gemini CLI setup
+Start the bridge:
 
+```powershell
+npm start
 ```
-...
-  "mcpServers": {
-    "colab-mcp": {
-      "command": "uv",
-      "args": ["run", "colab-mcp"],
-      "cwd": "/path/to/github/colab-mcp",
-      "timeout": 30000
-    }
-  }
-...
+
+The default MCP endpoint is:
+
+```text
+http://127.0.0.1:62161/mcp
 ```
+
+The HTTP port can be changed with `COLAB_BRIDGE_HTTP_PORT` or the command-line
+option `--http-port`. The token can also be supplied with `--token`.
+
+## Codex configuration
+
+Register the endpoint with the same user environment variable:
+
+```powershell
+codex mcp add colab-mcp-bridge `
+  --url http://127.0.0.1:62161/mcp `
+  --bearer-token-env-var COLAB_BRIDGE_TOKEN
+```
+
+After connecting, call `open_colab_browser_connection` and open the returned
+Colab URL. Then the notebook editing tools become available.
+
+## Development
+
+```powershell
+npm run lint
+npm test
+```
+
+The bridge listens only on loopback by default. Do not commit the bridge token.
