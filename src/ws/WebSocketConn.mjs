@@ -120,13 +120,13 @@ export class WebSocketConn extends EventTarget {
 
   /** @param {string} reason @returns {void} */
   _protocolError(reason) {
-    this.dispatchEvent(new ErrorEvent("error", { error: reason }));
+    this.dispatchEvent(new CustomEvent("error", { detail: reason }));
     this.close(1002, reason);
   }
 
   /** @param {Error} error @returns {void} */
   _handleSocketError(error) {
-    this.dispatchEvent(new ErrorEvent("error", { error }));
+    this.dispatchEvent(new CustomEvent("error", { detail: error }));
   }
 
   /** @returns {void} */
