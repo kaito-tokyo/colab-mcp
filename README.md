@@ -38,6 +38,10 @@ The default MCP endpoint is:
 http://127.0.0.1:62161/mcp
 ```
 
+On startup, the server also prints the current Colab connection URL and its
+`tokenForColabConnection` fragment. The latter contains the separately
+generated `mcpProxyToken`; it is not the `COLAB_MCP_BEARER_TOKEN`.
+
 The HTTP port can be changed with `COLAB_BRIDGE_HTTP_PORT` or the command-line
 option `--http-port`. The bearer token is intentionally not accepted as a
 command-line argument; it must come from `COLAB_MCP_BEARER_TOKEN`.
