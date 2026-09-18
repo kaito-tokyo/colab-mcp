@@ -88,6 +88,28 @@ test("silent Colab requests expire and are removed", async () => {
   assert.equal(bridge.pendingRequests.size, 0);
 });
 
+test("ID-bearing initialized notifications receive an error response", () => {
+  const bridge = new Bridge({
+    host: "127.0.0.1",
+    port: 0,
+    bearerToken: "test-token",
+    mcpProxyToken: "test-token",
+    origins: new Set(),
+    allowNoOrigin: true,
+  }, () => {});
+  let response;
+  bridge.handleMcpMessage(
+    { jsonrpc: "2.0", id: 9, method: "notifications/initialized" },
+    (message) => { response = message; },
+  );
+
+  assert.deepEqual(response, {
+    jsonrpc: "2.0",
+    id: 9,
+    error: { code: -32600, message: "Notification must not include an id" },
+  });
+});
+
 test("built-in WebSocket completes the Colab connection sequence", async (t) => {
   const bridge = new Bridge({
     host: "127.0.0.1",

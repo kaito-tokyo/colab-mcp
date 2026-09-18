@@ -322,7 +322,16 @@ export class Bridge {
       });
       return;
     }
-    if (message.method === "notifications/initialized") return;
+    if (message.method === "notifications/initialized") {
+      if (message.id !== undefined) {
+        send({
+          jsonrpc: "2.0",
+          id: message.id,
+          error: { code: -32600, message: "Notification must not include an id" },
+        });
+      }
+      return;
+    }
     if (message.method === "tools/list") {
       send({ jsonrpc: "2.0", id: message.id, result: { tools: COLAB_TOOLS } });
       return;
