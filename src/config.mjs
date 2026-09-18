@@ -4,6 +4,8 @@
 
 import { timingSafeEqual } from "node:crypto";
 
+const MAX_TIMER_DELAY_MS = 2_147_483_647;
+
 function randomToken() {
   const bytes = new Uint8Array(16);
   globalThis.crypto.getRandomValues(bytes);
@@ -12,8 +14,14 @@ function randomToken() {
 
 function parseRequestTimeoutMs(value) {
   const requestTimeoutMs = Number(value);
-  if (!Number.isFinite(requestTimeoutMs) || requestTimeoutMs <= 0) {
-    throw new Error("COLAB_MCP_REQUEST_TIMEOUT_MS must be a finite positive number");
+  if (
+    !Number.isFinite(requestTimeoutMs) ||
+    requestTimeoutMs <= 0 ||
+    requestTimeoutMs > MAX_TIMER_DELAY_MS
+  ) {
+    throw new Error(
+      "COLAB_MCP_REQUEST_TIMEOUT_MS must be between 1 and 2147483647",
+    );
   }
   return requestTimeoutMs;
 }
