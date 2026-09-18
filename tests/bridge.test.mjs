@@ -33,6 +33,83 @@ test("bridge returns a JSON-RPC parse error for malformed notebook messages", ()
   });
 });
 
+test("Colab disconnect rejects and removes forwarded requests", () => {
+  const bridge = new Bridge({
+    host: "127.0.0.1",
+    port: 0,
+    bearerToken: "test-token",
+    mcpProxyToken: "test-token",
+    origins: new Set(),
+    allowNoOrigin: true,
+  }, () => {});
+  const connection = new EventTarget();
+  connection.send = () => {};
+  bridge.server.activeConnection = connection;
+  bridge._handleConnection(connection);
+
+  let rejected;
+  bridge.handleMcpMessage(
+    { jsonrpc: "2.0", id: 7, method: "tools/call", params: { name: "get_cells", arguments: {} } },
+    () => {},
+    connection,
+    (error) => { rejected = error; },
+  );
+
+  assert.equal(bridge.pendingRequests.size, 1);
+  connection.dispatchEvent(new Event("close"));
+  assert.equal(rejected.message, "Colab notebook connection closed");
+  assert.equal(bridge.pendingRequests.size, 0);
+});
+
+test("silent Colab requests expire and are removed", async () => {
+  const bridge = new Bridge({
+    host: "127.0.0.1",
+    port: 0,
+    bearerToken: "test-token",
+    mcpProxyToken: "test-token",
+    requestTimeoutMs: 10,
+    origins: new Set(),
+    allowNoOrigin: true,
+  }, () => {});
+  const connection = new EventTarget();
+  connection.send = () => {};
+  bridge.server.activeConnection = connection;
+
+  let rejected;
+  bridge.handleMcpMessage(
+    { jsonrpc: "2.0", id: 8, method: "tools/call", params: { name: "get_cells", arguments: {} } },
+    () => {},
+    connection,
+    (error) => { rejected = error; },
+  );
+  await new Promise((resolve) => globalThis.setTimeout(resolve, 25));
+
+  assert.equal(rejected.message, "MCP request timed out");
+  assert.equal(bridge.pendingRequests.size, 0);
+});
+
+test("ID-bearing initialized notifications receive an error response", () => {
+  const bridge = new Bridge({
+    host: "127.0.0.1",
+    port: 0,
+    bearerToken: "test-token",
+    mcpProxyToken: "test-token",
+    origins: new Set(),
+    allowNoOrigin: true,
+  }, () => {});
+  let response;
+  bridge.handleMcpMessage(
+    { jsonrpc: "2.0", id: 9, method: "notifications/initialized" },
+    (message) => { response = message; },
+  );
+
+  assert.deepEqual(response, {
+    jsonrpc: "2.0",
+    id: 9,
+    error: { code: -32600, message: "Notification must not include an id" },
+  });
+});
+
 test("built-in WebSocket completes the Colab connection sequence", async (t) => {
   const bridge = new Bridge({
     host: "127.0.0.1",
