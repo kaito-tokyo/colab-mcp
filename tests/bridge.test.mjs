@@ -82,7 +82,7 @@ test("silent Colab requests expire and are removed", async () => {
     connection,
     (error) => { rejected = error; },
   );
-  await new Promise((resolve) => setTimeout(resolve, 25));
+  await new Promise((resolve) => globalThis.setTimeout(resolve, 25));
 
   assert.equal(rejected.message, "MCP request timed out");
   assert.equal(bridge.pendingRequests.size, 0);
