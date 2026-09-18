@@ -10,7 +10,7 @@ export async function runServer(overrides = {}) {
   await bridge.start();
   const httpPort = await bridge.listenHttp(bridge.server.config.host, bridge.server.config.httpPort, bridge.server.config.bearerToken, bridge.server.config.origins);
   console.error(`MCP HTTP endpoint: http://${bridge.server.config.host}:${httpPort}/mcp`);
-  const tokenForColabConnection = `mcpProxyToken=${encodeURIComponent(bridge.server.config.mcpProxyToken ?? bridge.server.config.token)}&mcpProxyPort=${bridge.server.port}`;
+  const tokenForColabConnection = `${encodeURIComponent(bridge.server.config.mcpProxyToken ?? bridge.server.config.token)}&${bridge.server.port}`;
   console.error(`Colab connection URL: https://colab.research.google.com/notebooks/empty.ipynb#${tokenForColabConnection}`);
   console.error(`tokenForColabConnection: ${tokenForColabConnection}`);
 

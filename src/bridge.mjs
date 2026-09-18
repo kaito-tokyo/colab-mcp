@@ -350,7 +350,7 @@ export class Bridge {
     }
     if (message.params?.name === OPEN_COLAB_TOOL) {
       const connected = this.server.connected;
-      const tokenForColabConnection = `mcpProxyToken=${encodeURIComponent(this.server.config.mcpProxyToken ?? this.server.config.token)}&mcpProxyPort=${this.server.port}`;
+      const tokenForColabConnection = `${encodeURIComponent(this.server.config.mcpProxyToken ?? this.server.config.token)}&${this.server.port}`;
       const url = `${COLAB_CONNECTION_URL}#${tokenForColabConnection}`;
       send({
         jsonrpc: "2.0",
