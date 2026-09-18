@@ -61,7 +61,10 @@ When `open_colab_browser_connection` is called, the bridge returns a Colab URL
 whose fragment is assembled as `tokenForColabConnection`:
 
 ```text
-#mcpProxyToken=<generated-token>&mcpProxyPort=<websocket-port>
+<generated-token>&<websocket-port>
+
+For example: `9-8pi2Alaxxxxxx&55760`. Enter this value directly in the Colab
+Web UI's connection field.
 ```
 
 If `COLAB_MCP_BEARER_TOKEN` is missing, startup fails with an error that shows
