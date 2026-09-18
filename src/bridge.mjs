@@ -11,10 +11,14 @@ const OPEN_COLAB_TOOL = "open_colab_browser_connection";
 const COLAB_CONNECTION_URL = "https://colab.research.google.com/notebooks/empty.ipynb";
 
 function isJsonRpcMessage(message) {
-  return message !== null &&
-    typeof message === "object" &&
-    !Array.isArray(message) &&
-    message.jsonrpc === "2.0" &&
+  if (message === null || typeof message !== "object" || Array.isArray(message))
+    return false;
+  const hasId = Object.hasOwn(message, "id");
+  const validId = !hasId || message.id === null ||
+    typeof message.id === "string" ||
+    (typeof message.id === "number" && Number.isFinite(message.id));
+  return message.jsonrpc === "2.0" &&
+    validId &&
     (typeof message.method === "string" ||
       Object.hasOwn(message, "result") ||
       Object.hasOwn(message, "error"));

@@ -10,6 +10,14 @@ function randomToken() {
   return Buffer.from(bytes).toString("base64url");
 }
 
+function parseRequestTimeoutMs(value) {
+  const requestTimeoutMs = Number(value);
+  if (!Number.isFinite(requestTimeoutMs) || requestTimeoutMs <= 0) {
+    throw new Error("COLAB_MCP_REQUEST_TIMEOUT_MS must be a finite positive number");
+  }
+  return requestTimeoutMs;
+}
+
 export function loadConfig(env = process.env, overrides = {}) {
   const bearerToken = overrides.bearerToken ?? env.COLAB_MCP_BEARER_TOKEN;
   if (!bearerToken) {
@@ -24,7 +32,7 @@ export function loadConfig(env = process.env, overrides = {}) {
     host: overrides.host ?? env.COLAB_BRIDGE_LISTEN ?? "127.0.0.1",
     port: Number(overrides.port ?? env.COLAB_BRIDGE_PORT ?? 0),
     httpPort: Number(overrides.httpPort ?? env.COLAB_BRIDGE_HTTP_PORT ?? 62161),
-    requestTimeoutMs: Number(
+    requestTimeoutMs: parseRequestTimeoutMs(
       overrides.requestTimeoutMs ?? env.COLAB_MCP_REQUEST_TIMEOUT_MS ?? 10 * 60 * 1000,
     ),
     bearerToken,
