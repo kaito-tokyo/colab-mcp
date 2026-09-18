@@ -24,6 +24,9 @@ export function loadConfig(env = process.env, overrides = {}) {
     host: overrides.host ?? env.COLAB_BRIDGE_LISTEN ?? "127.0.0.1",
     port: Number(overrides.port ?? env.COLAB_BRIDGE_PORT ?? 0),
     httpPort: Number(overrides.httpPort ?? env.COLAB_BRIDGE_HTTP_PORT ?? 62161),
+    requestTimeoutMs: Number(
+      overrides.requestTimeoutMs ?? env.COLAB_MCP_REQUEST_TIMEOUT_MS ?? 10 * 60 * 1000,
+    ),
     bearerToken,
     mcpProxyToken: overrides.mcpProxyToken ?? randomToken(),
     origins: new Set([

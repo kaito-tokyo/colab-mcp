@@ -36,6 +36,20 @@ test("HTTP MCP endpoint requires JSON POST content", async (t) => {
   assert.equal(response.status, 415);
 });
 
+test("HTTP MCP endpoint rejects structurally invalid JSON-RPC", async (t) => {
+  const bridge = new Bridge({ host: "127.0.0.1", port: 0, token: "http-test-token", origins: new Set(), allowNoOrigin: true }, () => {});
+  await bridge.start();
+  const port = await bridge.listenHttp("127.0.0.1", 0, "http-test-token");
+  t.after(() => bridge.close());
+  const response = await fetch(`http://127.0.0.1:${port}/mcp`, {
+    method: "POST",
+    headers: { Authorization: "Bearer http-test-token", "content-type": "application/json" },
+    body: "null",
+  });
+  assert.equal(response.status, 400);
+  assert.equal(await response.text(), "Invalid JSON-RPC");
+});
+
 test("HTTP MCP endpoint rejects oversized payloads", async (t) => {
   const bridge = new Bridge({ host: "127.0.0.1", port: 0, token: "http-test-token", origins: new Set(), allowNoOrigin: true }, () => {});
   await bridge.start();

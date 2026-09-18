@@ -10,6 +10,16 @@ import { tokenMatches } from "./config.mjs";
 const OPEN_COLAB_TOOL = "open_colab_browser_connection";
 const COLAB_CONNECTION_URL = "https://colab.research.google.com/notebooks/empty.ipynb";
 
+function isJsonRpcMessage(message) {
+  return message !== null &&
+    typeof message === "object" &&
+    !Array.isArray(message) &&
+    message.jsonrpc === "2.0" &&
+    (typeof message.method === "string" ||
+      Object.hasOwn(message, "result") ||
+      Object.hasOwn(message, "error"));
+}
+
 export class Bridge {
   /**
    * @param {{host: string, port: number, token: string, origins: Set<string>, allowNoOrigin: boolean}} config
@@ -22,6 +32,7 @@ export class Bridge {
       this._handleConnection(event.detail),
     );
     this.pendingRequests = new Map();
+    this.requestTimeoutMs = config.requestTimeoutMs ?? 10 * 60 * 1000;
     this.httpServer = null;
     this.sseClients = new Set();
     this.sseHeartbeats = new Map();
@@ -36,6 +47,7 @@ export class Bridge {
 
   /** @returns {Promise<void>} */
   close() {
+    this._rejectPending(new Error("Bridge is closing"));
     for (const response of this.sseClients) {
       globalThis.clearInterval(this.sseHeartbeats.get(response));
       response.end();
@@ -118,25 +130,38 @@ export class Bridge {
       }
       try {
         const message = JSON.parse(Buffer.concat(chunks));
+        if (!isJsonRpcMessage(message)) {
+          response.writeHead(400).end("Invalid JSON-RPC");
+          return;
+        }
+        let settled = false;
         const result = await new Promise((resolve, reject) => {
           const send = (value) => {
-            globalThis.clearTimeout(timer);
+            request.off("aborted", cancel);
+            response.off("close", cancel);
+            settled = true;
             resolve(value);
           };
-          const timer = globalThis.setTimeout(() => {
+          const cancel = () => {
+            if (settled) return;
+            settled = true;
             this._removePending(message.id, send);
-            reject(new Error("MCP request timed out"));
-          }, 60_000);
-          this.handleMcpMessage(message, send);
+            reject(new Error("MCP client disconnected"));
+          };
+          request.on("aborted", cancel);
+          response.on("close", cancel);
+          this.handleMcpMessage(message, send, undefined, reject);
           if (message.id === undefined) {
-            globalThis.clearTimeout(timer);
+            request.off("aborted", cancel);
+            response.off("close", cancel);
+            settled = true;
             resolve(undefined);
           }
         });
-      if (result === undefined) {
-        response.writeHead(202).end();
-        return;
-      }
+        if (result === undefined) {
+          response.writeHead(202).end();
+          return;
+        }
         if ((request.headers.accept ?? "").includes("text/event-stream")) {
           response.writeHead(200, {
             "content-type": "text/event-stream",
@@ -151,8 +176,13 @@ export class Bridge {
           });
           response.end(JSON.stringify(result));
         }
-      } catch {
-        response.writeHead(400).end("Invalid JSON-RPC");
+      } catch (error) {
+        if (error instanceof SyntaxError) {
+          response.writeHead(400).end("Invalid JSON-RPC");
+          return;
+        }
+        this.log(error);
+        response.writeHead(500).end("MCP request failed");
       }
     });
     return new Promise((resolve, reject) => {
@@ -169,6 +199,12 @@ export class Bridge {
     connection.addEventListener("message", (event) =>
       this._handleNotebookMessage(event.data, connection),
     );
+    connection.addEventListener("close", () => {
+      this._rejectPending(
+        new Error("Colab notebook connection closed"),
+        connection,
+      );
+    });
     this._sendInitialize(connection);
   }
 
@@ -208,6 +244,7 @@ export class Bridge {
     if (!pendingQueue?.length) return;
     const pending = pendingQueue.shift();
     if (!pendingQueue.length) this.pendingRequests.delete(message.id);
+    globalThis.clearTimeout(pending.timer);
     pending.send(message);
   }
 
@@ -223,9 +260,29 @@ export class Bridge {
   _removePending(id, send) {
     const queue = this.pendingRequests.get(id);
     if (!queue) return;
-    const remaining = queue.filter((pending) => pending.send !== send);
+    const remaining = queue.filter((pending) => {
+      if (pending.send !== send) return true;
+      globalThis.clearTimeout(pending.timer);
+      return false;
+    });
     if (remaining.length) this.pendingRequests.set(id, remaining);
     else this.pendingRequests.delete(id);
+  }
+
+  _rejectPending(error, connection = undefined) {
+    for (const [id, queue] of this.pendingRequests) {
+      const remaining = [];
+      for (const pending of queue) {
+        if (connection !== undefined && pending.connection !== connection) {
+          remaining.push(pending);
+          continue;
+        }
+        globalThis.clearTimeout(pending.timer);
+        pending.reject(error);
+      }
+      if (remaining.length) this.pendingRequests.set(id, remaining);
+      else this.pendingRequests.delete(id);
+    }
   }
 
   /** @param {import("./ws/WebSocketConn.mjs").WebSocketConn} connection */
@@ -252,7 +309,7 @@ export class Bridge {
    * @param {(message: object) => void} send
    * @returns {void}
    */
-  handleMcpMessage(message, send) {
+  handleMcpMessage(message, send, forwardedConnection = this.server.activeConnection, reject = () => {}) {
     if (message.method === "initialize") {
       send({
         jsonrpc: "2.0",
@@ -292,7 +349,7 @@ export class Bridge {
       });
       return;
     }
-    const connection = this.server.activeConnection;
+    const connection = forwardedConnection;
     if (!connection) {
       send({
         jsonrpc: "2.0",
@@ -302,7 +359,16 @@ export class Bridge {
       return;
     }
     const pendingQueue = this.pendingRequests.get(message.id) ?? [];
-    pendingQueue.push({ send });
+    const pending = { send, reject, connection, timer: undefined };
+    pending.timer = globalThis.setTimeout(() => {
+      const currentQueue = this.pendingRequests.get(message.id);
+      if (!currentQueue) return;
+      const remaining = currentQueue.filter((current) => current !== pending);
+      if (remaining.length) this.pendingRequests.set(message.id, remaining);
+      else this.pendingRequests.delete(message.id);
+      pending.reject(new Error("MCP request timed out"));
+    }, this.requestTimeoutMs);
+    pendingQueue.push(pending);
     this.pendingRequests.set(message.id, pendingQueue);
     this._sendMessage(connection, message);
   }
